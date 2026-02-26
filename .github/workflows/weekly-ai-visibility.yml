@@ -1,0 +1,47 @@
+name: Weekly AI Visibility Report
+
+on:
+  schedule:
+    # Every Monday at 15:00 UTC = 10:00 AM CDT / 9:00 AM CST
+    - cron: "0 15 * * 1"
+  workflow_dispatch:   # Lets you trigger a manual run anytime from GitHub
+
+jobs:
+  run-tracker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Restore previous week's data so we can show week-over-week delta
+      - name: Restore visibility data cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: visibility-data-${{ github.run_number }}
+          restore-keys: |
+            visibility-data-
+
+      - name: Run AI visibility tracker
+        env:
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python tracker.py
+
+      # Save this week's data for next week's comparison
+      - name: Save visibility data
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: visibility-data-${{ github.run_number }}
